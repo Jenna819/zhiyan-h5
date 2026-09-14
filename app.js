@@ -486,4 +486,16 @@
       toast("检测到未完成的学习任务，点开始继续");
     }
   }
+
+  // 页面切回前台时若已过 0 点：同步为新的一天（防整夜挂着页面看到旧状态）
+  let seenDay = E.todayKey();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !state) return;
+    const d = E.todayKey();
+    if (d === seenDay) return;
+    seenDay = d;
+    clockGuard();
+    if ($("v-home").classList.contains("on")) renderHome();
+    else toast("新的一天已开始，完成后返回首页可查看今日任务");
+  });
 })();
