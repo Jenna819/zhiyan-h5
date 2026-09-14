@@ -214,6 +214,12 @@ print(`\n主题 ${content.themes.length} 个 / 映射词数 ${Object.values(cont
   const packLen = content.wordsByTheme[plan.theme.id].length;
   assert(packLen >= 14 && packLen <= 16, "包 14~16 词");
   assert(plan.newIds.length === packLen && plan.articleDue === true, "整包+文章日");
+  // 旧版半包进度迁移：consumed 中间值重置，已学词不再重复出现
+  const st9 = freshState(); st9.theme = { i: 0, consumed: 5 };
+  const p9 = content.wordsByTheme[content.themes[0].id];
+  p9.slice(0, 3).forEach(w => { st9.userWords[w] = { lv: 1, ok: 0, w: 0, lastErr: "", nr: "2026-09-20", de: 0, ded: "", lastQ: "" }; });
+  const plan9 = E.themePlan(st9, content, "2026-09-14");
+  assert(st9.theme.consumed === 0 && plan9.newIds.length === p9.length - 3, "半包 consumed 迁移+已学过滤");
 }
 // themeQueue 顺序 = 主题序
 {

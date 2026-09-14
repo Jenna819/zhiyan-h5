@@ -269,6 +269,8 @@
     if (state.theme.i >= ids.length) return { theme: null, newIds: [], articleDue: false };
     const t = content.themes[state.theme.i];
     const pack = content.wordsByTheme[t.id];
+    // 旧版"多日一包"进度的迁移：半包 consumed 不再有意义，重置后按已学过滤
+    if (state.theme.consumed > 0 && state.theme.consumed < pack.length) state.theme.consumed = 0;
     const newIds = pack.slice(state.theme.consumed).filter(w => !state.userWords[w]);
     return { theme: t, themeNo: state.theme.i + 1, total: ids.length, newIds, articleDue: true };
   }
