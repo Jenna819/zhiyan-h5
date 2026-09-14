@@ -170,6 +170,7 @@ print(`\n主题 ${content.themes.length} 个 / 映射词数 ${Object.values(cont
   content.themes.forEach(t => {
     const pack = content.wordsByTheme[t.id];
     assert(pack && pack.length > 0, "主题无词 " + t.id);
+    assert(pack.length >= 14 && pack.length <= 16, "包大小越界 " + t.id + "=" + pack.length);
     pack.forEach(wid => { if (seen.has(wid)) dup++; seen.add(wid); assert(!!wmap[wid], "主题引用不存在词 " + wid); });
     const low = t.art.map(p => p[0]).join(" ").toLowerCase().replace(/[^a-z0-9.%-]+/g, " ");
     pack.forEach(wid => {
@@ -183,34 +184,36 @@ print(`\n主题 ${content.themes.length} 个 / 映射词数 ${Object.values(cont
   assert(seen.size === content.words.length, "主题未覆盖全部词 " + seen.size + "/" + content.words.length);
 }
 // 多日推进模拟：goalW=10 时第 2 天为文章日；goalW=15 的专题可能一天吃完
+// 一日一篇推进模拟：每天吃完整包并朗读，12 天 = 12 个专题
 {
-  const st5 = freshState(); st5.profile.goalW = 10; st5.theme = { i: 0, consumed: 0 };
+  const st5 = freshState(); st5.theme = { i: 0, consumed: 0 };
   const tids = content.themes.map(t => t.id);
-  let artDays = 0, day = 0, expectIdx = 0;
+  let artDays = 0, day = 0;
   for (; day < 12; day++) {
     const d = E.addDays("2026-09-14", day);
     const plan = E.themePlan(st5, content, d);
     assert(plan.theme !== null, "第" + day + "天应有任务");
-    assert(plan.newIds.length <= 10, "新词不超目标");
+    assert(plan.articleDue === true, "每天都是文章日");
     const pack = content.wordsByTheme[tids[st5.theme.i]];
-    const allFromCurrentPack = plan.newIds.every(w => pack.includes(w));
-    assert(allFromCurrentPack, "每日新词应来自当前主题包 day" + day);
-    if (plan.articleDue) { artDays++; assert(plan.newIds.length >= pack.length - st5.theme.consumed, "文章日应吃完本包"); }
+    assert(plan.newIds.length === pack.length, "每日新词=整包 day" + day);
+    assert(plan.newIds.every(w => pack.includes(w)), "新词来自当前主题包 day" + day);
+    artDays++;
     plan.newIds.forEach(w => { st5.userWords[w] = E.applyAnswer(st5.userWords, w, "w2c", true, d); });
     E.themeCommit(st5, content, plan.newIds);
     E.themeAdvance(st5, content);
-    if (st5.theme.i > expectIdx) expectIdx = st5.theme.i;
   }
-  assert(artDays >= 1 && artDays <= 4, "12 天内文章日数量合理，实际 " + artDays);
-  assert(st5.theme.i >= 3, "12 天应推进至少 3 个专题，实际 i=" + st5.theme.i);
+  assert(artDays === 12, "12 天 12 篇文章");
+  assert(st5.theme.i === 12, "12 天应吃完 12 个专题，实际 i=" + st5.theme.i);
+  const learned12 = tids.slice(0, 12).reduce((a, id) => a + content.wordsByTheme[id].length, 0);
+  assert(Object.keys(st5.userWords).length === learned12, "12 天所学 = 前 12 包全部，实际 " + Object.keys(st5.userWords).length + "/" + learned12);
 }
-// goalW=15：小包一天吃完并朗读
+// 复习上限：forcedNew 模式下最多 8
 {
-  const st6 = freshState(); st6.profile.goalW = 15; st6.theme = { i: 0, consumed: 0 };
+  const st6 = freshState(); st6.theme = { i: 0, consumed: 0 };
   const plan = E.themePlan(st6, content, "2026-09-14");
-  assert(plan.newIds.length === 15, "15 目标吃 15 词");
   const packLen = content.wordsByTheme[plan.theme.id].length;
-  assert(plan.articleDue === (15 >= packLen - st6.theme.consumed), "文章日判定正确");
+  assert(packLen >= 14 && packLen <= 16, "包 14~16 词");
+  assert(plan.newIds.length === packLen && plan.articleDue === true, "整包+文章日");
 }
 // themeQueue 顺序 = 主题序
 {

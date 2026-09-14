@@ -94,8 +94,7 @@
     } else {
       const due = countDue(today);
       const plan = E.themePlan(state, content, today);
-      const artTxt = plan.articleDue ? " · 朗读文章" : "";
-      progTxt = `待学：新词 ${plan.newIds.length} · 复习 ${due}${artTxt}`;
+      progTxt = `待学：新词 ${plan.newIds.length} · 复习 ${due}${plan.theme ? " · 朗读发言稿" : ""}`;
     }
     if (thTxt) progTxt = thTxt + " · " + progTxt;
     $("h-progress").textContent = progTxt;
@@ -113,11 +112,8 @@
       const d = state.days[last];
       $("h-report").innerHTML = `<h2>今日战报</h2><div class="sub">正确率 ${d.acc}% · 错 ${d.wrong} 词</div>`;
     }
-    // 目标 chips
-    renderChips("goal-w", [5, 10, 15], state.profile.goalW, v => {
-      state.profile.goalW = v; save(); toast("已保存，明日任务生效"); renderHome();
-    });
-    $("h-goal").textContent = `每天 ${state.profile.goalW} 词（按专题包推进）· 读完一个专题朗读一篇发言稿`;
+    // 节奏说明（新词量由专题包决定，不再由用户选择）
+    $("h-goal").innerHTML = `每天一个专题：<b>约 15 个新词</b>（首看→双向题→解析）＋ <b>1 篇发言稿朗读</b>；复习由系统按错题权重自动排，上限 8 个。`;
   }
   function sessionThemeLine() {
     const sess = state.session;
@@ -152,7 +148,7 @@
     else {
       const plan = E.themePlan(state, content, today);
       topUpQueues();
-      const task = E.buildTask(state, content, today);
+      const task = E.buildTask(state, content, today, plan.newIds);
       E.themeCommit(state, content, task.newIds);
       const items = task.wordItems;
       if (plan.articleDue && plan.theme) items.push({ k: "a", tid: plan.theme.id });
@@ -453,12 +449,8 @@
   // ---------- 首次进入 ----------
   function onboarding() {
     openSheet(`<h2>欢迎用「职言」练专业英语 🏭</h2>
-      <p class="sub" style="line-height:1.8">面向电池热管理工程师：<b>450 个专业词 · 30 个真实工作专题</b>。<br>每天流程：首看 → 双向题（对错都有解析）→ 错题加权复习；<b>每读完一个专题的词，最后朗读一篇该专题的工程师发言稿</b>。<br>进度只存本机，可用"备份码"防丢。</p>
-      <div class="panel"><b>每日新词数</b><span class="sub">（一个专题约 15 词，通常 1~2 天学完）</span>
-        <div class="chips" id="on-w" style="margin-top:8px"></div>
-      </div>
+      <p class="sub" style="line-height:1.8">面向电池热管理工程师：<b>450 个专业词 · 30 个真实工作专题</b>。<br>每天一个专题：约 15 个词（首看 → 双向题，对错都有解析）＋ 一篇把这些词串起来的<b>工程师发言稿朗读</b>；复习由系统按薄弱点自动排。<br>进度只存本机，可用"备份码"防丢。</p>
       <button class="btn" id="on-go">开始今天的学习</button>`);
-    renderChips("on-w", [5, 10, 15], state.profile.goalW, v => (state.profile.goalW = v, $("on-w").querySelectorAll(".chip").forEach((c, i) => c.classList.toggle("sel", [5, 10, 15][i] === v))));
     $("on-go").onclick = () => { save(); $("mask").classList.remove("on"); renderHome(); show("v-home"); toast("今日任务已生成，开始吧"); };
   }
 

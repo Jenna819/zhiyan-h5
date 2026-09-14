@@ -46,7 +46,8 @@
         ["During formation, gas escapes from the electrode, and if the process is rushed we see swelling in the field.","化成时电极排气，工艺赶工就会在市场端看到鼓胀。"],
         ["We also logged two incidents of over-discharge and one of overcharge, both from misuse in the depot.","还记录到两起过放和一起过充，都是场站误操作。"],
         ["Once a cell is overcurrent for long, lithium plating becomes irreversible and the capacity loss is final.","长期过流后析锂不可逆，容量损失就是终局。"],
-        ["To sum up: extend the formation dwell, and update the charging limit in the release notes.","总结：延长化成静置，并在发布说明里更新充电上限。"]
+        ["To sum up: extend the formation dwell, and update the charging limit in the release notes.","总结：延长化成静置，并在发布说明里更新充电上限。"],
+        ["Let us drill down on the oldest four cells before we blame the calendar.","在归因日历老化之前，我们先把最老的四颗电芯下钻看清。"]
       ]},
     { id:"T5", zh:"热失控安全红线会", form:"专题讲解", sc:"ds",
       art:[
@@ -108,7 +109,8 @@
         ["The dielectric strength of the coolant matters if a plate ever cracks.","万一冷板开裂，冷却液的绝缘强度就关键了。"],
         ["Any contamination—thermal grease or tap water—can start corrosion from the inside.","任何污染——导热硅脂或自来水——都可能从内部引发腐蚀。"],
         ["We change the fluid at service intervals, and we record the refrigerant charge at build.","保养周期换液，生产时记录冷媒充注量。"],
-        ["In short, treat the fluid as a component, not a consumable.","总之内，把冷却液当零件，别当耗材。"]
+        ["In short, treat the fluid as a component, not a consumable.","总之，把冷却液当零件，别当耗材。"],
+        ["Aside from the freeze point, check conductivity at every service visit.","除了冰点，每次保养还要检查电导率。"]
       ]},
     { id:"T10", zh:"泵阀与管路布置评审", form:"评审发言", sc:"ds",
       art:[
@@ -157,7 +159,8 @@
         ["Without heating, the internal resistance doubles and the voltage sag kills the power request.","若不加热，内阻翻倍、电压跌落会掐掉功率请求。"],
         ["Low temperature also hurts temperature uniformity: the edges are colder than the core by six kelvin.","低温也伤害均温性：边部比芯部低六度。"],
         ["The threshold for enabling fast charge is now set by cell temperature, not by SOC.","快充使能阈值现在由电芯温度决定，不再看 SOC。"],
-        ["When the pack is cold, the controller applies derating gently, and it recovers as soon as the cells warm up.","包冷时控制器温和降额，电芯回暖后即恢复。"]
+        ["When the pack is cold, the controller applies derating gently, and it recovers as soon as the cells warm up.","包冷时控制器温和降额，电芯回暖后即恢复。"],
+        ["If energy economy is what you push back on, note the preheat only runs when a fast charger is the target.","如果你们要质疑能耗，请注意预热只在导航目标是快充桩时才运行。"]
       ]},
     { id:"T14", zh:"浸没式与冷板方案对比决策", form:"决策会陈述", sc:"mk",
       art:[
@@ -171,7 +174,8 @@
         ["Our gap on cooling capacity is largest at the tab, where the heat flux concentrates.","我们在冷却能力上的差距最大处在极耳，热流在那儿集中。"],
         ["The alternative of adding a water block per module is too costly per kilowatt.","每个模组加水冷块的替代路线，每千瓦成本太高。"],
         ["Nevertheless, the simulation says immersion cuts the peak-to-average temperature gap by half.","尽管如此，仿真显示浸没式能把峰均温差砍一半。"],
-        ["Decision needed by Friday, because the tooling order has a long lead; the choice must be robust to supply risk.","周五前要拍板，因为模具订购周期很长；而且这个选择必须对供应风险足够稳健。"]
+        ["Decision needed by Friday, because the tooling order has a long lead; the choice must be robust to supply risk.","周五前要拍板，因为模具订购周期很长；而且这个选择必须对供应风险足够稳健。"],
+        ["One note for the sheet-metal team: the busbar heat sink stays on the cold plate route, not on immersion.","给钣金团队提个醒：汇流排散热片方案留在冷板路线，不上浸没。"]
       ]},
     { id:"T15", zh:"隔热与热失控蔓延防护设计", form:"专题讲解", sc:"ds",
       art:[
@@ -234,7 +238,8 @@
         ["We also run a crush plate slowly at the pack center to watch the vent behavior.","我们还在包中心慢速挤压，观察泄压表现。"],
         ["A steel ball indentation on a single cell shows how local the damage must be to trigger anything.","单电芯钢球压痕看局部损伤要多狠才会触发。"],
         ["After every abuse sequence, the endurance question is: does the pack still hold its clamping force?","每次滥用序列之后，耐久问题是：电池包还保得住夹紧力吗？"],
-        ["Fixtures matter as much as the tests; a bad fixture gives a beautiful failure.","夹具与试验同样重要；坏夹具会造出一个漂亮的失效。"]
+        ["Fixtures matter as much as the tests; a bad fixture gives a beautiful failure.","夹具与试验同样重要；坏夹具会造出一个漂亮的失效。"],
+        ["To hit the dates we need more testing bandwidth; the two chambers are booked solid until June.","要赶上节点我们需要更多试验产能；两台环境舱排满到六月。"]
       ]},
     { id:"T20", zh:"传感器布置与标定计划", form:"站会发言", sc:"dv",
       art:[
@@ -273,7 +278,8 @@
         ["Each power on runs a self-check: the monitor queue is cleared and no fault stays silent.","每次上电都跑自检：监控队列清空、故障不会沉默。"],
         ["We define the onset temperature for warning at sixty, and a thermal shock of fifty kelvin per minute is itself a red line.","我们把预警起始温度定在六十度，每分钟五十开尔文的热冲击本身就是红线。"],
         ["After any protective trip, the BMS will derate first and reclose is allowed once, and only after the fault is cleared.","保护动作后 BMS 先降额，且只允许重合一次，必须故障已清除。"],
-        ["The whole protection net is tested on the HIL bench before the car sees it.","整张保护网先台架再上车，上车前全测过。"]
+        ["The whole protection net is tested on the HIL bench before the car sees it.","整张保护网先台架再上车，上车前全测过。"],
+        ["We hold a short sync weekly to review the alarm log together.","我们每周开一个简短碰头会，一起看报警日志。"]
       ]},
     { id:"T23", zh:"DV 试验计划与试验台建设", form:"计划讲解", sc:"dv",
       art:[
@@ -287,7 +293,8 @@
         ["Calorimetry gives the true heat release rate curve, and we publish the pass and fail limits.","量热法给出真实放热速率曲线，我们把合格与不合格线公示。"],
         ["Every measurement uncertainty is written next to the data, and repeatability is checked weekly.","每个测量不确定度都写在数据旁边，重复性每周核查。"],
         ["The third-party lab will run the witness test for us at the R100 gate.","R100 阀点的目击测试交给独立的第三方实验室跑。"],
-        ["I will follow up with the lab on slot booking and send you the dates.","我会跟进实验室的排期，然后把日期发给你。"]
+        ["I will follow up with the lab on slot booking and send you the dates.","我会跟进实验室的排期，然后把日期发给你。"],
+        ["If the chamber calibration slips a week, we come up with a plan B: run abuse tests first.","如果标定舱延误一周，我们就拿出 B 计划：先跑滥用试验。"]
       ]},
     { id:"T24", zh:"认证法规与审核通关", form:"迎检发言", sc:"ex",
       art:[
@@ -305,6 +312,7 @@
       art:[
         ["The simulation story of the month, briefly.","这个月的仿真故事，简短版。"],
         ["The CFD mesh on the new plate went from six million down to two and a half without losing the wall detail.","新冷板的 CFD 网格从六百万降到两百五十万，壁面细节没丢。"],
+        ["Furthermore, if we chase noise in the curves, we end up retuning constants with no physical meaning.","此外，如果我们去追曲线里的噪声，最终会调出一堆没有物理意义的参数。"],
         ["The boundary condition that matters most is the convection coefficient on the bottom, measured not guessed.","最要紧的边界条件是底部对流换热系数，要测不要猜。"],
         ["Every material property in the library came from a datasheet except the pad, which came from our own correlation.","库里每个材料属性都来自数据手册，除了导热垫，它来自我们自己的拟合关联式。"],
         ["The convergence history was ugly: divergence at step three hundred, so we relaxed the under-relaxation.","收敛史很难看：第 300 步发散，于是放松了欠松弛因子。"],
@@ -326,7 +334,11 @@
         ["At the gate we either release the drawing revision or we don't.","阀点上我们要么发布图纸修订，要么不。"],
         ["The FMEA picked up a new failure mode: valve stuck mid-way during a cold start.","FMEA 抓到新失效模式：冷启动时阀卡半程。"],
         ["The root cause was software, and the countermeasure is a watchdog line.","根本原因在软件，对策是加一行看门狗。"],
-        ["Deliverables due Friday: minutes, action list, and the updated milestone plan.","周五交付：会议纪要、行动清单、更新后的里程碑计划。"]
+        ["Deliverables due Friday: minutes, action list, and the updated milestone plan.","周五交付：会议纪要、行动清单、更新后的里程碑计划。"],
+        ["Let us walk through the change list one by one, and I will take notes as we go.","我们逐条过一遍变更清单，我来记录。"],
+        ["Propose we freeze the spec today and handle any later edits through the change board.","提议今天冻结规格，后续修改一律走变更流程。"],
+        ["Before we close, make sure we are on the same page about who owns each action.","散会前确认大家对谁来负责每项行动已有一致理解。"],
+        ["After the meeting, let us touch base with the plant team for the trial slot.","会后我们就试制排期与工厂团队简短对一下。"]
       ]},
     { id:"T27", zh:"模具开发与样件试制", form:"进度会发言", sc:"dv",
       art:[
@@ -338,7 +350,8 @@
         ["In the meantime, the pilot batch covers customer builds.","与此同时，中试批次先顶住客户装机。"],
         ["The supplier sent the PPAP package with one missing dimension report.","供应商发来的 PPAP 档案少一份尺寸报告。"],
         ["Every drawing change needs a change request; the revision log is not optional.","每次图纸改动都要变更申请；修订记录不是可选项。"],
-        ["Mass production timing is tied to the milestone, not to the mood of the market.","量产时点绑定里程碑，不绑市场情绪。"]
+        ["Mass production timing is tied to the milestone, not to the mood of the market.","量产时点绑定里程碑，不绑市场情绪。"],
+        ["The short shots on cavity three: we will figure out the gate design with the tool maker this week.","三号腔短射问题，这周我们会和模具厂一起把浇口设计解决掉。"]
       ]},
     { id:"T28", zh:"供应商技术谈判与量产爬坡", form:"谈判发言", sc:"ex",
       art:[
@@ -361,7 +374,10 @@
         ["The failure mode was internal short; the trigger was charging, but the charge did nothing wrong.","失效模式是内部短路；触发是充电，但充电没有错。"],
         ["The off-gassing before shutdown matched the classic decomposition signature.","停机前的放气与典型分解特征吻合。"],
         ["The real bottleneck was the cutter change interval; the magnetic trap in the slurry loop is the stopgap.","真正的瓶颈是切刀更换周期；浆料回路加磁棒只是权宜之计。"],
-        ["We keep the recall register open but empty, thanks to the containment.","得益于围堵，召回台账开着但空着。"]
+        ["We keep the recall register open but empty, thanks to the containment.","得益于围堵，召回台账开着但空着。"],
+        ["The 8D demands full traceability: every cell serial maps back to its slurry batch.","8D 要求完全可追溯：每颗电芯序列号都能回溯到它的浆料批次。"],
+        ["The reconstructed cell showed a doubled internal resistance the day before the event.","回读数据里，事发电芯在事发前一天内阻已经翻倍。"],
+        ["On the electrical findings let us circle back after I merge the telemetry.","电气方面的发现，等我合并完遥测数据再回头讨论。"]
       ]},
     { id:"T30", zh:"海外客户技术答疑会", form:"答疑 script", sc:"pr",
       art:[
@@ -384,36 +400,36 @@
 
   // ---- 词->主题 归属映射（由校验脚本生成后固化于此）----
   window.T_WORDS = {
-    "T1":["AC02","AC04","AC05","AC07","AC08","AC09","AC14","AC18","AC19","AC21","CB03","CB04","CB05","CB06","CB17","CB18","CB20","CB54","CB55","CB56","CB57","CB58","LC32","LC36","SD50"],
-    "T2":["AC06","CB07","CB08","CB09","CB10","CB11","CB12","CB13","CB14","CB15","CB19","CB47","LC30","LC49","MT12"],
-    "T3":["AC10","CB21","CB22","CB25","CB26","CB27","CB28","CB29","CB30","CB31","CB32","CB33","CB53","CB60","CB61","MC08","MC09","MC12","MC21","MT29","SC31","SC37","TH39"],
-    "T4":["CB23","CB24","CB34","CB35","CB36","CB37","CB38","CB39","CB40","CB42","CB43","CB44","CB45","CB46","CB48","CB49","CB50","MC15","MC23","SC05","SC30","SD41","SD47"],
-    "T5":["MC42","SC36","SD01","TC15","TC16","TC17","TH14","TH15","TH16","TH17","TH18","TH19","TH20","TH21","TH22","TH23","TH24","TH49","TH52","TH57"],
-    "T6":["AC01","AC03","AC11","AC12","LC53","MC17","SD05","TH09","TH10","TH11","TH12","TH13","TH25","TH26","TH27","TH28","TH29","TH31","TH32","TH33","TH34","TH35","TH40","TH41","TH43","TH56"],
-    "T7":["MT25","SD06","TH01","TH02","TH03","TH04","TH05","TH06","TH07","TH08","TH42","TH53","TH58"],
-    "T8":["LC01","LC02","LC03","LC11","LC13","LC14","LC15","LC16","LC17","LC18","LC19","LC20","LC21","LC31","MC41","MT23","MT24","SD17","TH30","TH50"],
-    "T9":["AC31","CB62","LC04","LC05","LC06","LC07","LC08","LC09","LC10","LC28","LC45","LC65","MT04","SC10"],
-    "T10":["AC27","LC12","LC33","LC34","LC35","LC37","LC39","LC40","LC41","LC46","LC47","LC50","LC51","LC54","LC55","LC56","LC57","MC39","SC38"],
-    "T11":["LC22","LC23","LC24","LC25","LC26","LC27","LC29","LC48","LC66","LC67","MC25","SC39","SD15"],
-    "T12":["CB16","LC58","LC64","MC43","MT01","SC22","SC34"],
-    "T13":["LC59","LC60","LC61","MC24","MT32","SC14","TH36","TH37","TH38","TH44","TH48","TH54","TH55"],
-    "T14":["LC42","LC43","LC44","LC52","MC01","MC03","MC04","MC36","MT13","MT30","SD28"],
-    "T15":["MT05","MT09","MT10","MT11","MT14","MT15","MT16","MT17","MT18","MT19","MT20","SC24"],
-    "T16":["AC16","CB41","LC62","LC63","MT02","MT03","MT06","MT07","MT08","MT21","MT22","MT26","MT27","MT28","MT33","MT34","MT35","MT36","SD29"],
-    "T17":["AC13","AC15","AC20","AC22","AC23","AC24","AC25","AC26","AC36","AC37","MT31","SC01","SD30","SD31","TC38"],
-    "T18":["AC17","AC32","AC33","AC34","AC38","AC40","LC38","TC10","TC19","TC20","TC33","TC39","TC43"],
-    "T19":["AC28","AC29","AC30","AC35","AC39","TC02","TC08","TC18","TC21","TC22"],
-    "T20":["SC02","SC03","SC04","SC06","SC07","SC08","SC09","SC11","SC16","SC44","TC04","TC37"],
-    "T21":["CB51","CB52","MC38","SC12","SC13","SC15","SC17","SC18","SC19","SC20","SC21","SC23","SC25","SC27","SC33","SC40","SC42"],
-    "T22":["SC26","SC28","SC29","SC32","SC35","SC41","SC43","TH45","TH51"],
-    "T23":["MC18","SD24","SD27","TC01","TC03","TC05","TC09","TC11","TC13","TC14","TC23","TC24","TC25","TC26","TC27","TC34","TC35"],
-    "T24":["SD22","TC06","TC07","TC12","TC28","TC29","TC30","TC31","TC32","TC36","TC40","TC41","TC42"],
-    "T25":["MC11","SD02","SD03","SD04","SD07","SD08","SD09","SD10","SD11","SD12","SD14","SD16","SD25","SD48"],
-    "T26":["MC16","MC40","MC48","SD13","SD18","SD19","SD20","SD21","SD23","SD26","SD38","SD39","SD49"],
-    "T27":["MC33","SD32","SD33","SD34","SD35","SD40","SD42","SD44"],
-    "T28":["MC26","SD36","SD37","SD43","SD45","SD46"],
-    "T29":["CB01","CB02","CB59","MC02","MC34","TH46","TH47"],
-    "T30":["MC05","MC06","MC07","MC10","MC13","MC14","MC19","MC20","MC22","MC27","MC28","MC29","MC30","MC31","MC32","MC35","MC37","MC44","MC45","MC46","MC47","MC49","MC50"]
+    "T1":["AC04","AC07","AC08","AC09","AC14","CB04","CB05","CB06","CB17","CB18","CB20","CB54","CB55","CB56","CB57","LC32"],
+    "T2":["CB07","CB08","CB09","CB10","CB11","CB12","CB13","CB14","CB15","CB19","CB47","CB59","LC30","LC49"],
+    "T3":["CB22","CB25","CB26","CB27","CB29","CB30","CB31","CB32","CB33","CB53","CB60","CB61","MC09","MC12","MT29","TH39"],
+    "T4":["CB23","CB24","CB34","CB35","CB36","CB37","CB38","CB39","CB40","CB42","CB43","CB44","CB45","CB46","CB49","MC15"],
+    "T5":["SD01","TC15","TC16","TH14","TH15","TH17","TH18","TH19","TH20","TH21","TH22","TH23","TH24","TH49","TH52","TH57"],
+    "T6":["AC01","AC03","LC53","TH09","TH10","TH12","TH13","TH27","TH28","TH31","TH32","TH33","TH34","TH35","TH40","TH43"],
+    "T7":["MT25","SC37","SD06","TH01","TH02","TH03","TH04","TH05","TH06","TH07","TH08","TH42","TH53","TH58"],
+    "T8":["LC01","LC02","LC03","LC11","LC13","LC14","LC15","LC16","LC17","LC18","LC19","MC41","TH30","TH50"],
+    "T9":["CB62","LC04","LC05","LC06","LC07","LC08","LC09","LC10","LC20","LC28","LC31","LC45","LC65","MC37","MT04"],
+    "T10":["LC12","LC21","LC33","LC34","LC35","LC36","LC37","LC39","LC40","LC41","LC50","LC54","LC55","LC56","LC57","MC39"],
+    "T11":["LC22","LC23","LC24","LC25","LC26","LC27","LC29","LC48","LC66","LC67","MC25","SC31","SC39","SD15"],
+    "T12":["CB01","CB21","LC46","LC47","LC58","LC64","MC42","MC43","MT01","MT24","SC22","SC34","SC38","TH41"],
+    "T13":["CB48","LC59","LC60","LC61","MC17","MC24","MC49","MT32","SC14","TH36","TH37","TH38","TH44","TH48","TH55"],
+    "T14":["AC11","LC42","LC43","LC44","LC52","MC01","MC03","MC04","MC36","MT13","SD28","SD50","TH26","TH29","TH56"],
+    "T15":["MT05","MT09","MT10","MT11","MT12","MT14","MT15","MT16","MT17","MT18","MT19","MT20","SC24","TH54"],
+    "T16":["LC62","LC63","MT02","MT03","MT06","MT07","MT08","MT21","MT22","MT23","MT26","MT27","MT28","MT33","MT34","MT35"],
+    "T17":["AC12","AC13","AC15","AC18","AC19","AC20","AC21","AC22","AC23","AC24","AC25","AC26","CB58","MT31","SD31"],
+    "T18":["AC16","AC17","AC31","AC32","AC33","AC34","AC38","AC40","LC38","MT36","TC10","TC19","TC20","TC33","TC39"],
+    "T19":["AC27","AC28","AC29","AC30","AC35","AC36","AC37","AC39","CB41","MC50","TC02","TC08","TC17","TC18","TC21","TC22"],
+    "T20":["LC51","SC01","SC02","SC03","SC04","SC05","SC06","SC07","SC08","SC09","SC11","SC16","SC44","TC04"],
+    "T21":["AC02","CB51","CB52","SC12","SC13","SC15","SC17","SC18","SC19","SC20","SC21","SC23","SC25","SC30","SC33","SC40"],
+    "T22":["CB50","MC28","SC26","SC27","SC28","SC29","SC32","SC35","SC41","SC42","SC43","TH25","TH45","TH51"],
+    "T23":["MC18","SD24","TC01","TC03","TC05","TC09","TC11","TC13","TC14","TC23","TC24","TC25","TC26","TC27","TC34","TC35"],
+    "T24":["TC06","TC07","TC12","TC28","TC29","TC30","TC31","TC32","TC36","TC38","TC40","TC41","TC42","TC43"],
+    "T25":["MC11","SD02","SD03","SD04","SD05","SD07","SD08","SD09","SD10","SD11","SD12","SD14","SD16","SD25","SD48","TH11"],
+    "T26":["MC21","MC29","MC40","MC44","MC46","MC48","SD17","SD18","SD19","SD22","SD26","SD27","SD38","SD39","SD49"],
+    "T27":["MC30","MC33","SC10","SD13","SD23","SD29","SD30","SD32","SD33","SD34","SD35","SD40","SD42","SD44"],
+    "T28":["AC05","CB03","CB16","MC16","MC26","MC38","MT30","SD36","SD37","SD41","SD43","SD45","SD46","SD47"],
+    "T29":["AC06","AC10","CB02","CB28","MC02","MC34","MC47","SC36","SD20","SD21","TC37","TH16","TH46","TH47"],
+    "T30":["MC05","MC06","MC07","MC08","MC10","MC13","MC14","MC19","MC20","MC22","MC23","MC27","MC31","MC32","MC35","MC45"]
   };
 })();
 

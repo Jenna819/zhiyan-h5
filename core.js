@@ -56,7 +56,7 @@
 
   // ---------- 每日任务生成 ----------
   // state: { profile:{goalW,goalS}, userWords:{}, uSents:{}, queue:{words:[],sents:[]}, forceTomorrow:[], dayMarks:{} }
-  function buildTask(state, content, dateStr) {
+  function buildTask(state, content, dateStr, forcedNew) {
     const { words, sents } = content;
     const rnd = mulberry32(hashStr(state.uid + ":" + dateStr));
     const uw = state.userWords;
@@ -73,16 +73,25 @@
       const wa = effWeight(uw[b.wid], dateStr), wb = effWeight(uw[a.wid], dateStr);
       return (b.forced - a.forced) || (wa - wb) || (a.wid < b.wid ? -1 : 1);
     });
-    const reviewPicks = due.slice(0, Math.max(3, state.profile.goalW)).map(x => x.wid);
+    const reviewN = forcedNew ? 8 : Math.max(3, state.profile.goalW);
+    const reviewPicks = due.slice(0, reviewN).map(x => x.wid);
     const reviewSet = new Set(reviewPicks);
 
-    // 2) 新词：按队列顺序取，跳过复习已选
-    let needNew = state.profile.goalW;
+    // 2) 新词：外部给定（专题整包）或按队列顺序取
     const qWords = state.queue.words;
-    while (needNew > 0 && qWords.length) {
-      const wid = qWords.shift();
-      if (reviewSet.has(wid)) continue;
-      newPick.push(wid); needNew--;
+    if (forcedNew) {
+      newPick.push(...forcedNew);
+      for (const id of newPick) {
+        const ix = qWords.indexOf(id);
+        if (ix >= 0) qWords.splice(ix, 1);
+      }
+    } else {
+      let needNew = state.profile.goalW;
+      while (needNew > 0 && qWords.length) {
+        const wid = qWords.shift();
+        if (reviewSet.has(wid)) continue;
+        newPick.push(wid); needNew--;
+      }
     }
 
     // 3) 组装题目：复习词单题（交替方向），新词首看+双向两题；交错排列
@@ -260,19 +269,16 @@
     if (state.theme.i >= ids.length) return { theme: null, newIds: [], articleDue: false };
     const t = content.themes[state.theme.i];
     const pack = content.wordsByTheme[t.id];
-    const remain = Math.max(0, pack.length - state.theme.consumed);
-    const takeN = Math.min(state.profile.goalW, remain);
-    const newIds = pack.slice(state.theme.consumed, state.theme.consumed + takeN)
-      .filter(w => !state.userWords[w]);
-    const articleDue = takeN >= remain;
-    return { theme: t, themeNo: state.theme.i + 1, total: ids.length, newIds, articleDue };
+    const newIds = pack.slice(state.theme.consumed).filter(w => !state.userWords[w]);
+    return { theme: t, themeNo: state.theme.i + 1, total: ids.length, newIds, articleDue: true };
   }
-  // 今日 session 的新词清单（plan 时记录，答题时消费）
+  // 一次 session = 一整包：提交即吃完本包（含已会词跳过的情形，防卡死）
   function themeCommit(state, content, newIds) {
-    if (!state.theme || !newIds.length) return;
+    if (!state.theme) return;
     const ids = themeIds(content);
+    if (state.theme.i >= ids.length) return;
     const pack = content.wordsByTheme[ids[state.theme.i]];
-    state.theme.consumed = Math.min(pack.length, state.theme.consumed + newIds.length);
+    state.theme.consumed = pack.length;
   }
   function themeAdvance(state, content) {
     const ids = themeIds(content);
