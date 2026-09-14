@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body>
+<div id="__anchor"></div>
+<!-- 复用真实页面结构与脚本 -->
+<div id="harness"></div>
+
+<!-- 先注入 index.html 的 body 结构，再加载脚本 -->
+<script>
+// 抓取 index.html 的 <body> 内容，塞进当前文档
+fetch("index.html").then(r=>r.text()).then(html=>{
+  const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1];
+  // 去掉脚本标签，避免重复加载 core/app
+  const pure = body.replace(/<script[\s\S]*?<\/script>/g, "");
+  document.body.insertAdjacentHTML("afterbegin", pure);
+  const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]);
+  // 顺序加载真实脚本，最后一个（app.js）执行完后再驱动
+  let i=0;
+  function next(){
+    if(i>=scripts.length){ window.__booted=true; return; }
+    const s=document.createElement("script"); s.src=scripts[i++]; s.onload=next; s.onerror=()=>{document.title="LOAD_FAIL:"+s.src;};
+    document.body.appendChild(s);
+  }
+  next();
+});
+</script>
+<script>
+// 轮询直到 app 就绪，然后模拟点击整条流程
+window.__errs=[];
+window.onerror=(m,s,l,c)=>{ window.__errs.push(m+" @"+l+":"+c); };
+function ready(){ return window.Engine && document.getElementById("btn-start"); }
+function q(sel){ return document.querySelector(sel); }
+function txt(){ return document.title; }
+let waited=0;
+const poll=setInterval(()=>{
+  if(!window.__booted){ if(++waited>200){document.title="BOOT_TIMEOUT";} return; }
+  clearInterval(poll);
+  try{ run(); }catch(e){ document.title="RUN_ERR:"+e.message; }
+},10);
+
+function on(id){ const el=document.getElementById(id); return el && el.classList.contains("on"); }
+function run(){
+  const log=[];
+  // 首次进入会有 onboarding sheet；直接点开始学习
+  const start=q("#btn-start");
+  if(!start){ document.title="NO_START"; return; }
+  start.click();
+  let steps=0, sawSentence=false, sawFirstLook=false, answered=0, ratings=0;
+  while(steps++<120){
+    // 报告出现即结束
+    if(on("v-report")) break;
+    if(on("v-word")){
+      const fl=q("#fl-go");
+      if(fl){ sawFirstLook=true; fl.click(); log.push("FL"); continue; }
+      const next=q("#w-next");
+      if(next && q("#wp") && q("#wp").style.display!=="none"){ next.click(); log.push("NEXT"); continue; }
+      const opt=q("#opts .opt:not([disabled])");
+      if(opt){ opt.click(); answered++; log.push("ANS"); continue; }
+    }
+    if(on("v-sent")){
+      const rate=q("#s-body [data-r]");
+      if(rate){ sawSentence=true; rate.click(); ratings++; log.push("RATE"); continue; }
+    }
+    // 卡住：暴露当前可见视图
+    const vis=[...document.querySelectorAll(".view")].filter(v=>v.classList.contains("on")).map(v=>v.id);
+    const sb=document.getElementById("s-body");
+    const dbg=sb?("sbody children="+sb.children.length+" err="+(window.__errs||[]).slice(-2).join(" | ")):"no #s-body";
+    document.title="STUCK@"+steps+" view="+vis+" "+dbg+" log="+log.slice(-6);
+    return;
+  }
+  const done=on("v-report");
+  const rep=q("#r-body") && q("#r-body").innerHTML.length>50;
+  document.title = (done&&rep)
+    ? "UI_OK answered="+answered+" ratings="+ratings+" firstLook="+sawFirstLook+" sawSentence="+sawSentence
+    : "UI_INCOMPLETE done="+done+" rep="+rep+" answered="+answered;
+}
+</script>
+</body></html>

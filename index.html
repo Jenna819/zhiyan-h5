@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a6cff">
+<title>职言 · 热管理专业英语</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- 首页 -->
+<section class="view on" id="v-home">
+  <div class="card" style="text-align:center">
+    <div class="sub" id="h-flame">今天开始你的第一个 1 天</div>
+    <h1 style="margin:6px 0 2px">热管理专业英语 · 每日练</h1>
+    <div class="sub" id="h-date"></div>
+    <div class="prog" id="h-progwrap"><i id="h-prog" style="width:0%"></i></div>
+    <div class="sub" id="h-progress"></div>
+    <button class="btn" id="btn-start">开始学习</button>
+    <button class="btn gray" id="btn-book">词库</button>
+  </div>
+  <div class="card" id="h-report"></div>
+  <div class="card">
+    <h2>今日目标</h2>
+    <div id="h-goal" class="sub"></div>
+    <div style="display:flex;gap:10px;margin-top:10px">
+      <div style="flex:1" class="chips" id="goal-w"></div>
+      <div style="flex:1" class="chips" id="goal-s"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 单词题 -->
+<section class="view" id="v-word">
+  <div class="prog"><i id="w-prog" style="width:0%"></i></div>
+  <div id="w-body"></div>
+</section>
+
+<!-- 句子跟读 -->
+<section class="view" id="v-sent">
+  <div class="prog"><i id="s-prog" style="width:0%"></i></div>
+  <div id="s-body"></div>
+</section>
+
+<!-- 当日报告 -->
+<section class="view" id="v-report">
+  <div id="r-body"></div>
+</section>
+
+<!-- 词库 -->
+<section class="view" id="v-book">
+  <button class="nav-back" id="btn-back-home">← 返回</button>
+  <input class="search" id="bk-search" placeholder="搜英文或中文，如：cold plate 或 乙二醇">
+  <div class="chips" id="bk-filter" style="margin-bottom:10px"></div>
+  <div id="bk-list"></div>
+  <div class="card" style="margin-top:14px">
+    <h2>数据备份</h2>
+    <p class="sub">进度保存在本机。换手机/误删前，把备份码复制存到你的备忘录。</p>
+    <button class="btn ghost" id="btn-export">生成备份码</button>
+    <textarea class="bk" id="bk-export" style="display:none"></textarea>
+    <button class="btn ghost" id="btn-import" style="margin-top:8px">粘贴备份码恢复</button>
+  </div>
+</section>
+
+<div class="mask" id="mask"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="data/words_cb.js"></script>
+<script src="data/words_th.js"></script>
+<script src="data/words_lc.js"></script>
+<script src="data/words_mt.js"></script>
+<script src="data/words_ac.js"></script>
+<script src="data/words_sc.js"></script>
+<script src="data/words_tc.js"></script>
+<script src="data/words_sd.js"></script>
+<script src="data/words_mc.js"></script>
+<script src="data/sentences.js"></script>
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

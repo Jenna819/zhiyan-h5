@@ -1,0 +1,166 @@
+// 核心逻辑模拟测试：jsc test_core.js 运行
+// polyfill ----------
+function _b64(str) {
+  const K = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let out = "";
+  for (let i = 0; i < str.length; i += 3) {
+    const c1 = str.charCodeAt(i), c2 = str.charCodeAt(i + 1), c3 = str.charCodeAt(i + 2);
+    const has2 = i + 1 < str.length, has3 = i + 2 < str.length;
+    const bits = (c1 << 16) | ((has2 ? c2 : 0) << 8) | (has3 ? c3 : 0);
+    out += K[(bits >> 18) & 63] + K[(bits >> 12) & 63];
+    out += has2 ? K[(bits >> 6) & 63] : "=";
+    out += has3 ? K[bits & 63] : "=";
+  }
+  return out;
+}
+function _b64d(str) {
+  const K = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let out = "";
+  const clean = str.replace(/=+$/, "");
+  for (let i = 0; i < clean.length; i += 4) {
+    const e1 = K.indexOf(clean[i]);
+    const e2 = K.indexOf(clean[i + 1]);
+    const e3 = i + 2 < clean.length ? K.indexOf(clean[i + 2]) : -1;
+    const e4 = i + 3 < clean.length ? K.indexOf(clean[i + 3]) : -1;
+    out += String.fromCharCode((e1 << 2) | (e2 >> 4));
+    if (e3 >= 0) out += String.fromCharCode(((e2 & 15) << 4) | (e3 >> 2));
+    if (e4 >= 0) out += String.fromCharCode(((e3 & 3) << 6) | e4);
+  }
+  return out;
+}
+globalThis.btoa = _b64; globalThis.atob = _b64d;
+globalThis.window = globalThis;
+
+// 加载内容与核心 ----------
+load("data/words_cb.js"); load("data/words_th.js"); load("data/words_lc.js");
+load("data/words_mt.js"); load("data/words_ac.js"); load("data/words_sc.js");
+load("data/words_tc.js"); load("data/words_sd.js"); load("data/words_mc.js");
+load("data/sentences.js"); load("core.js");
+
+const E = Engine;
+const content = { words: W, sents: S };
+let pass = 0, fail = 0;
+function assert(cond, msg) {
+  if (cond) { pass++; } else { fail++; print("❌ " + msg); }
+}
+
+// ---- 数据完整性 ----
+print(`词库 ${content.words.length} 词 / 句库 ${content.sents.length} 句`);
+const ids = new Set();
+content.words.forEach(w => {
+  assert(!ids.has(w.id), "重复词id " + w.id); ids.add(w.id);
+  assert(w.w && w.cn && w.id && w.ex, "词字段缺失 " + w.id);
+  assert(Array.isArray(w.t) && w.t.length, "缺场景标签 " + w.id);
+  w.t.forEach(t => assert(["mk","ds","dv","ex","pr"].includes(t), "非法标签 " + w.id + " " + t));
+});
+const sidSet = new Set();
+content.sents.forEach(s => {
+  assert(!sidSet.has(s.id), "重复句id " + s.id); sidSet.add(s.id);
+  assert(s.en && s.cn && s.sc, "句字段缺失 " + s.id);
+  assert(["mk","ds","dv","ex","pr"].includes(s.sc), "句场景非法 " + s.id);
+  const low = s.en.toLowerCase();
+  (s.notes || []).forEach(([t]) => assert(low.includes(t.toLowerCase()), "note词不在句中: " + s.id + " " + t));
+});
+// 句库场景覆盖
+const scCount = {};
+content.sents.forEach(s => scCount[s.sc] = (scCount[s.sc] || 0) + 1);
+print("句子场景分布:", JSON.stringify(scCount));
+
+// ---- 干扰项 ----
+let rnd = E.mulberry32(42);
+content.words.forEach(w => {
+  const o1 = E.makeOptions(w, content, rnd), o2 = E.makeOptionsMeaning(w, content, rnd);
+  assert(o1.length === 4 && o2.length === 4, "选项数 " + w.id);
+  assert(o1.some(o => o.id === w.id) && o2.some(o => o.id === w.id), "正确项缺失 " + w.id);
+  const set = new Set(o1.map(o => o.label));
+  assert(set.size === 4, "选项label重复 " + w.id);
+});
+
+// ---- 跨天确定性 ----
+const st1 = { uid: "u1", profile: { goalW: 10, goalS: 3 }, userWords: {}, uSents: {}, forceTomorrow: [], queue: { words: content.words.map(w => w.id), sents: content.sents.map(s => s.id) } };
+const st2 = JSON.parse(JSON.stringify(st1));
+const t1 = E.buildTask(st1, content, "2026-09-14");
+const t2 = E.buildTask(st2, content, "2026-09-14");
+assert(JSON.stringify(t1) === JSON.stringify(t2), "同种子任务生成不确定");
+
+// ---- 模拟学习 5 天 ----
+function freshState() {
+  return { uid: "u1", profile: { goalW: 10, goalS: 3 }, userWords: {}, uSents: {}, forceTomorrow: [],
+           queue: { words: E.shuffle(content.words.map(w => w.id), E.mulberry32(7)),
+                    sents: E.shuffle(content.sents.map(s => s.id), E.mulberry32(8)) }, days: {}, streak: { count: 0, lastDone: null } };
+}
+const st = freshState();
+let lastNewIds = null;
+for (let day = 0; day < 5; day++) {
+  const date = E.addDays("2026-09-14", day);
+  const task = E.buildTask(st, content, date);
+  const ans = [];
+  let idx = 0;
+  task.wordItems.forEach(it => {
+    // 策略：Day0 全对；之后每第 3 题答错制造错题
+    const ok = day === 0 ? true : (idx % 3 !== 0);
+    const rec = E.applyAnswer(st.userWords, it.wid, it.q, ok, date);
+    ans.push({ k: "w", wid: it.wid, q: it.q, ok, de: rec.de });
+    idx++;
+  });
+  task.sentItems.forEach((it, i2) => {
+    const rating = i2 % 3 === 2 ? "poor" : "good";
+    E.applySent(st.uSents, it.sid, rating, date);
+    ans.push({ k: "s", sid: it.sid, rating });
+  });
+  const rep = E.buildReport(task.wordItems.concat(task.sentItems), ans, st.userWords, st.uSents, content, date);
+  st.forceTomorrow = E.forceTomorrowIds(st.userWords, date);
+  if (day === 0) {
+    assert(rep.acc === 100, "Day0 应全对");
+    assert(task.newIds.length === 10, "Day0 新词应为10，实际 " + task.newIds.length);
+    assert(task.reviewIds.length === 0, "Day0 无复习");
+    assert(rep.sentPoor === 1, "Day0 自评poor应为1");
+    lastNewIds = task.newIds.slice();
+    // 全对：两题同词 ok>=2 → 升级 lv1，nr = date+2
+    const rec = st.userWords[task.newIds[0]];
+    assert(rec.lv === 1 && rec.nr === E.addDays(date, 2), "Day0 首词应升 Lv1 nr+2，实际 " + JSON.stringify(rec));
+  }
+  if (day === 2) {
+    // Day0 全对的词 nr=+2 → Day2 应到期
+    assert(task.reviewIds.some(id => lastNewIds.includes(id)), "Day2 应包含 Day0 的到期复习词");
+  }
+  print(`Day${day} ${date}: 新${task.newIds.length} 复习${task.reviewIds.length} 句${task.sentItems.length} · 正确率${rep.acc}% · 薄弱top:${rep.topTags.map(t => t.name).join(",") || "-"} · force${st.forceTomorrow.length}`);
+}
+const learned = Object.keys(st.userWords).length;
+assert(learned === 50, "5天×10新词 应学50个，实际 " + learned);
+
+// ---- 权重与衰减 ----
+const w1 = { lv: 2, ok: 0, w: 4, lastErr: "2026-08-01", nr: "", de: 0, ded: "", lastQ: "" };
+assert(Math.abs(E.effWeight(w1, "2026-09-14") - 2) < 1e-9, "30天无错应衰减一半");
+
+// ---- 掌握度降级 ----
+const st3 = freshState();
+E.applyAnswer(st3.userWords, "CB01", "w2c", true, "2026-09-14");
+E.applyAnswer(st3.userWords, "CB01", "c2w", true, "2026-09-14");
+assert(st3.userWords.CB01.lv === 1, "对2次应升Lv1");
+E.applyAnswer(st3.userWords, "CB01", "w2c", false, "2026-09-15");
+assert(st3.userWords.CB01.lv === 0 && st3.userWords.CB01.nr === "2026-09-15", "答错降两级并当日重排");
+assert(st3.userWords.CB01.w > 0, "答错权重增加");
+E.applyAnswer(st3.userWords, "CB01", "c2w", false, "2026-09-15");
+assert(Math.abs(st3.userWords.CB01.w - (1.0 + 1.5 * 1.5)) < 1e-9, "同日连错加权: 实际 " + st3.userWords.CB01.w);
+
+// ---- 备份码往返 ----
+const code = E.encodeBackup(st);
+const back = E.decodeBackup(code);
+assert(back.uid === st.uid && Object.keys(back.userWords).length === 50, "备份码往返");
+try { E.decodeBackup("bad code"); assert(false, "坏码应抛错"); } catch (e) { assert(e.message.includes("前缀"), "坏码前缀报错"); }
+
+// ---- 日期工具 ----
+assert(E.addDays("2026-08-30", 5) === "2026-09-04", "跨月加天");
+assert(E.diffDays("2026-09-01", "2026-09-14") === 13, "日期差");
+assert(E.diffDays("2026-02-27", "2026-03-02") === 3, "跨月3天");
+
+// ---- 新词耗尽边界 ----
+const st4 = freshState();
+st4.queue.words = [];
+for (const w of content.words.slice(0, 20)) st4.userWords[w.id] = { lv: 3, ok: 0, w: 0, lastErr: "", nr: "2099-01-01", de: 0, ded: "", lastQ: "" };
+const task4 = E.buildTask(st4, content, "2026-09-14");
+assert(task4.newIds.length === 0 && task4.reviewIds.length === 0 && task4.sentItems.length === 3, "词库耗尽: 无新无复习，仍有句子");
+
+print(`\n===== ${pass} 通过 / ${fail} 失败 =====`);
+if (fail) throw new Error("tests failed");
