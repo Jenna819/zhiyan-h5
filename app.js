@@ -2,7 +2,7 @@
 (function () {
   "use strict";
   const $ = id => document.getElementById(id);
-  const content = { words: window.W, sents: window.S };
+  const content = { words: window.W, sents: window.S, themes: window.T, wordsByTheme: window.T_WORDS };
   const KEY = "zy_v1";
   let state = null;
 
@@ -18,19 +18,15 @@
       uid, profile: { goalW: 10, goalS: 3, createdAt: E.todayKey() },
       streak: { count: 0, lastDone: null }, maxTs: Date.now(),
       userWords: {}, uSents: {}, forceTomorrow: [], days: {}, session: null,
-      queue: null
+      queue: null, theme: { i: 0, consumed: 0 }
     };
   }
   function topUpQueues() {
     if (!state.queue) state.queue = { words: [], sents: [] };
-    const inQ = new Set(state.queue.words);
-    const miss = content.words.map(w => w.id).filter(id => !state.userWords[id] && !inQ.has(id));
-    if (!state.queue.words.length && miss.length)
-      state.queue.words = E.shuffle(miss, E.mulberry32(E.hashStr(state.uid + "w")));
-    const sq = new Set(state.queue.sents);
-    const smiss = content.sents.map(s => s.id).filter(id => !state.uSents[id] && !sq.has(id));
-    if (!state.queue.sents.length && smiss.length)
-      state.queue.sents = E.shuffle(smiss, E.mulberry32(E.hashStr(state.uid + "s")));
+    if (!state.theme) state.theme = { i: 0, consumed: 0 };
+    // 词队列 = 主题序的未学词（先吃当前包剩余，再顺次后续包）
+    state.queue.words = E.themeQueue(state, content).filter(id => !state.userWords[id]);
+    // 句子不再进每日任务（由主题文章取代），不再补充 sents 队列
   }
 
   // ---------- 视图切换 ----------
@@ -71,8 +67,6 @@
   // ---------- 词查询 ----------
   const dictLower = {};
   content.words.forEach(w => { dictLower[w.w.toLowerCase()] = w; });
-  const sentNotes = {};
-  content.sents.forEach(s => { sentNotes[s.id] = {}; (s.notes || []).forEach(([t, m]) => { sentNotes[s.id][t.toLowerCase()] = m; }); });
 
   // ---------- 首页 ----------
   function renderHome() {
@@ -92,14 +86,18 @@
 
     // 进度
     let progTxt = "", pct = 0;
+    const thTxt = sessionThemeLine();
     if (resuming) {
       progTxt = `已完成 ${sess.idx}/${sess.items.length} 题`; pct = sess.idx / sess.items.length * 100;
     } else if (doneToday) {
       progTxt = "全部完成，明早见 ☀️"; pct = 100;
     } else {
       const due = countDue(today);
-      progTxt = `待学：新词 ${Math.min(state.profile.goalW, state.queue.words.length)} · 复习 ${due} · 句子 ${state.profile.goalS}`;
+      const plan = E.themePlan(state, content, today);
+      const artTxt = plan.articleDue ? " · 朗读文章" : "";
+      progTxt = `待学：新词 ${plan.newIds.length} · 复习 ${due}${artTxt}`;
     }
+    if (thTxt) progTxt = thTxt + " · " + progTxt;
     $("h-progress").textContent = progTxt;
     $("h-prog").style.width = pct + "%";
 
@@ -110,17 +108,25 @@
       const d = state.days[last];
       $("h-report").innerHTML = `<h2>${last} 报告</h2><div class="sub">正确率 ${d.acc}% · 错 ${d.wrong} 词 · 已按薄弱点排入今日复习</div>`;
     } else if (!last) {
-      $("h-report").innerHTML = `<h2>学习说明</h2><div class="sub" style="line-height:1.7">先<b>首看</b>新词，再双向做题（英→中、中→英），错与对都有<b>专业解析</b>；之后朗读场景句。<br>进度存本机，词库 450 词 / 句库 50 句，学完可继续扩。</div>`;
+      $("h-report").innerHTML = `<h2>学习说明</h2><div class="sub" style="line-height:1.7">每天的新词都来自<b>同一个工作专题</b>（如"冷却液选型评审会"）：先<b>首看</b>，再双向做题（英→中、中→英），错与对都有<b>专业解析</b>；专题词学完的那天，朗读一篇把这些词串起来的<b>工程师发言稿</b>。<br>进度存本机，词库 450 词 / 30 个专题。</div>`;
     } else {
       const d = state.days[last];
       $("h-report").innerHTML = `<h2>今日战报</h2><div class="sub">正确率 ${d.acc}% · 错 ${d.wrong} 词</div>`;
     }
     // 目标 chips
     renderChips("goal-w", [5, 10, 15], state.profile.goalW, v => {
-      state.profile.goalW = v; save(); toast(sess && !sess.done ? "已保存，明日任务生效" : "已保存，明日任务生效"); renderHome();
+      state.profile.goalW = v; save(); toast("已保存，明日任务生效"); renderHome();
     });
-    renderChips("goal-s", [2, 3, 4], state.profile.goalS, v => { state.profile.goalS = v; save(); renderHome(); });
-    $("h-goal").textContent = `每天 ${state.profile.goalW} 词 + ${state.profile.goalS} 句`;
+    $("h-goal").textContent = `每天 ${state.profile.goalW} 词（按专题包推进）· 读完一个专题朗读一篇发言稿`;
+  }
+  function sessionThemeLine() {
+    const sess = state.session;
+    let t, no, total;
+    if (sess && !sess.done && sess.theme) { t = themeById(sess.theme.id); no = sess.theme.no; total = sess.theme.total; }
+    else { const p = E.themePlan(state, content, E.todayKey()); if (!p.theme) return ""; t = p.theme; no = p.themeNo; total = p.total; }
+    if (!t) return "";
+    const doneN = (state.theme ? state.theme.i : 0);
+    return `📖 专题 ${no}/${total}「${t.zh}」(${doneN}/${content.themes.length} 篇完)`;
   }
   function countDue(today) {
     let n = 0;
@@ -144,11 +150,14 @@
     const today = E.todayKey();
     if (state.session && !state.session.done && state.session.items) { /* 继续未完成任务（含昨日未做完的） */ }
     else {
+      const plan = E.themePlan(state, content, today);
       topUpQueues();
       const task = E.buildTask(state, content, today);
-      const items = task.wordItems.concat(task.sentItems);
-      if (!items.length) { toast("今日无任务：词库学习完毕 + 无到期复习，请等待新词库"); return; }
-      state.session = { date: today, items, idx: 0, ans: [], firstShown: [], done: false };
+      E.themeCommit(state, content, task.newIds);
+      const items = task.wordItems;
+      if (plan.articleDue && plan.theme) items.push({ k: "a", tid: plan.theme.id });
+      if (!task.wordItems.length && !plan.articleDue) { toast("今日无任务：词库学习完毕 + 无到期复习，请等待新词库"); return; }
+      state.session = { date: today, items, idx: 0, ans: [], firstShown: [], done: false, theme: plan.theme ? { id: plan.theme.id, no: plan.themeNo, total: plan.total } : null };
       save();
     }
     renderStep(); show("v-word");
@@ -165,7 +174,9 @@
   function renderStep() {
     const it = curItem();
     if (!it) return finishSession();
-    if (it.k === "w") renderWord(it); else renderSent(it);
+    if (it.k === "w") renderWord(it);
+    else if (it.k === "a") renderArticle(it);
+    else finishSession();
   }
 
   // ---------- 单词题 ----------
@@ -239,44 +250,46 @@
     if (!ok) toast("已加入错题本，明日强化复习");
   }
 
-  // ---------- 句子 ----------
+  // ---------- 主题文章朗读 ----------
   let sentTimer = null;
-  function renderSent(it) {
+  function themeById(tid) { return content.themes.find(t => t.id === tid); }
+  function themeTxt(t) { return t.art.map(p => p[0]).join(" "); }
+  function renderArticle(it) {
+    const th = themeById(it.tid);
     $("v-word").className = "view"; $("v-sent").className = "view on";
     $("s-prog").style.width = stepPct() + "%";
-    const sd = E.sentsById(content)[it.sid];
-    const toks = sd.en.split(" ");
-    const noteMap = sentNotes[sd.id];
-    let pos = 0;
+    const full = themeTxt(th);
+    const toks = full.split(" ");
+    const starts = []; let acc = 0;
+    toks.forEach(t => { starts.push(acc); acc += t.length + 1; });
+    function lookup(tk) {
+      const norm = tk.toLowerCase().replace(/[.,;:!?"()’]/g, "");
+      return dictLower[norm] || dictLower[norm.replace(/s$/, "")] || dictLower[norm.replace(/(ed|ing)$/, "")];
+    }
     const spans = toks.map((tk, i) => {
-      const start = pos; pos += tk.length + 1;
-      const norm = tk.toLowerCase().replace(/[.,;:!?"()]/g, "");
-      const note = noteMap[norm] || noteMap[norm.replace(/s$/, "")];
-      const d = dictLower[norm];
-      const cls = "tok" + ((note || d) ? " has-note" : "");
+      const d = lookup(tk);
+      const cls = "tok" + (d ? " has-note" : "");
       return `<span class="${cls}" data-i="${i}" data-t="${tk.replace(/"/g, "&quot;")}">${tk}</span>`;
     }).join(" ");
     $("s-body").innerHTML = `
       <div class="card">
-        <div class="sub">${E.SCEN[sd.sc]} · 朗读（看着读出声即可）</div>
+        <div class="sub">今日专题 · ${th.zh}（${th.form}）· 看着朗读出声即可</div>
         <div class="sentence" id="sent">${spans}</div>
-        <div class="cn-line">${sd.cn}</div>
+        <div id="cnblock" class="cn-line" style="display:none">${th.art.map(p => `<div>${p[1]}</div>`).join("")}</div>
         <div style="margin-top:12px">
-          <button class="speak" id="sp-1">▶ 整句 1.0x</button>
-          <button class="speak" id="sp-075">▶ 0.75x</button>
+          <button class="speak" id="sp-1">▶ 全文 1.0x</button>
+          <button class="speak" id="sp-075">▶ 慢速 0.75x</button>
+          <button class="chip" id="btn-cn" style="margin-left:6px">中/EN</button>
         </div>
-        ${sd.usage ? `<div class="usage"><b>句式</b> ${sd.usage}</div>` : ""}
-        <div class="sub" style="margin-top:10px">点下划线单词看逐词解析 · 读完做自评</div>
+        <div class="sub" style="margin-top:10px">点下划线单词查词条 · 读完做自评</div>
         <div class="chips" style="margin-top:12px">
           <button class="chip" data-r="good">挺顺</button>
           <button class="chip" data-r="ok">一般</button>
           <button class="chip" data-r="poor">没说好</button>
         </div>
-        <button class="btn gray" id="s-next2">跳过此句</button>
+        <button class="btn gray" id="s-next2">跳过此篇</button>
       </div>`;
     const tokEls = [...$("sent").querySelectorAll(".tok")];
-    const starts = []; let acc = 0;
-    toks.forEach(t => { starts.push(acc); acc += t.length + 1; });
     function highlight(idx) {
       tokEls.forEach(e => e.classList.remove("hl"));
       if (idx >= 0 && tokEls[idx]) tokEls[idx].classList.add("hl");
@@ -284,7 +297,7 @@
     function play(rate) {
       clearInterval(sentTimer);
       let supported = false;
-      speak(sd.en, rate, ev => {
+      speak(full, rate, ev => {
         supported = true;
         const ci = ev.charIndex;
         let idx = 0; for (let i = 0; i < starts.length; i++) if (ci >= starts[i]) idx = i;
@@ -299,22 +312,19 @@
     }
     $("sp-1").onclick = () => play(1.0);
     $("sp-075").onclick = () => play(0.75);
+    $("btn-cn").onclick = () => { const b = $("cnblock"); b.style.display = b.style.display === "none" ? "block" : "none"; };
     tokEls.forEach(e => {
       e.onclick = () => {
-        const tk = e.dataset.t, norm = tk.toLowerCase().replace(/[.,;:!?"()]/g, "");
-        const note = noteMap[norm] || noteMap[norm.replace(/s$/, "")];
-        const d = dictLower[norm];
-        let html = `<h2>${tk} <button class="speak" data-sp="${norm}">🔊</button></h2>`;
+        const tk = e.dataset.t, d = lookup(tk);
+        let html = `<h2>${tk} <button class="speak" data-sp="${tk.toLowerCase().replace(/[^a-z0-9 -]/g, "")}">🔊</button></h2>`;
         if (d) html += `<div style="line-height:1.8">${d.pos || ""} <b>${d.cn}</b>${d.col ? `<br><span class="kv">搭配</span> ${d.col}` : ""}${d.conf ? `<br><span class="kv">易混</span> ${d.conf}` : ""}</div>`;
-        else if (note) html += `<div style="line-height:1.8">${note}</div>`;
-        else html += `<div class="sub">这个词不在词条里，本句重点词都有黄色下划线。</div>`;
-        if (note && d) html += `<div class="kv" style="margin-top:8px">本句中：${note}</div>`;
+        else html += `<div class="sub">这个词不在词条里，文章里的专业词都有黄色下划线。</div>`;
         openSheet(html); bindSpeak($("sheet"));
       };
     });
     const rate = (r) => {
-      E.applySent(state.uSents, sd.id, r, state.session.date);
-      state.session.ans.push({ k: "s", sid: sd.id, rating: r });
+      E.applySent(state.uSents, th.id, r, state.session.date);
+      state.session.ans.push({ k: "a", tid: th.id, rating: r });
       if (r === "poor") toast("已标记，明天再读一遍");
       save(); advance();
     };
@@ -332,26 +342,30 @@
     }
     state.days[date] = { acc: rep.acc, wrong: rep.wrongWords.length, sentPoor: rep.sentPoor };
     state.forceTomorrow = E.forceTomorrowIds(state.userWords, date);
+    E.themeAdvance(state, content);
     sess.done = true; save();
     topUpQueues(); save();
     renderReport(rep); show("v-report");
   }
   function renderReport(rep) {
+    const sess = state.session;
+    const thLine = sess && sess.theme ? `<div class="sub" style="margin-top:8px">📖 专题「${themeById(sess.theme.id).zh}」今日推进完成 ${sess.theme.no}/${sess.theme.total}，${sess.theme.no === sess.theme.total ? "下一篇开新专题" : "明日继续本专题"}</div>` : "";
     const tagTxt = rep.topTags.length
       ? rep.topTags.map(t => `「${t.name}」权重 ${t.w}`).join("、") : "暂无明显薄弱（继续积累 3 天更准）";
     $("r-body").innerHTML = `
       <div class="card">
         <h1>🎉 今日任务完成</h1>
+        ${thLine}
         <div class="stat" style="margin-top:14px">
           <div><div class="n">${rep.acc}%</div><div class="sub">正确率</div></div>
           <div><div class="n">${rep.wordCorrect}/${rep.wordTotal}</div><div class="sub">词题对/总</div></div>
-          <div><div class="n">${rep.sentN - rep.sentPoor}/${rep.sentN}</div><div class="sub">句子自评定</div></div>
+          <div><div class="n">${rep.sentN ? (rep.sentN - rep.sentPoor) + "/" + rep.sentN : "—"}</div><div class="sub">朗读自评定</div></div>
         </div>
         <div class="panel">
           <div class="verdict">薄弱点</div>
           <div>① ${tagTxt}</div>
           ${rep.dir.c2w > rep.dir.w2c && rep.dir.c2w > 0 ? `<div>② 中→英 错率 ${Math.round(rep.dir.c2w * 100)}% ＞ 英→中 ${Math.round(rep.dir.w2c * 100)}% → 输出偏弱</div>` : ""}
-          ${rep.sentPoor ? `<div>③ ${rep.sentPoor} 个句子自评"没说好"，已排入明日</div>` : ""}
+          ${rep.sentPoor ? `<div>③ 朗读自评"没说好"，明日已排复习</div>` : ""}
         </div>
         ${rep.wrongWords.length ? `
         <div class="panel">
@@ -439,15 +453,12 @@
   // ---------- 首次进入 ----------
   function onboarding() {
     openSheet(`<h2>欢迎用「职言」练专业英语 🏭</h2>
-      <p class="sub" style="line-height:1.8">面向电池热管理工程师：<b>450 个专业词 + 50 个海外会议场景句</b>。<br>每天流程：看词选义 → 看义选词 → 解析 → 朗读句子。错题自动加权进复习。<br>进度只存本机，可用"备份码"防丢。</p>
-      <div class="panel"><b>每日新词</b>
+      <p class="sub" style="line-height:1.8">面向电池热管理工程师：<b>450 个专业词 · 30 个真实工作专题</b>。<br>每天流程：首看 → 双向题（对错都有解析）→ 错题加权复习；<b>每读完一个专题的词，最后朗读一篇该专题的工程师发言稿</b>。<br>进度只存本机，可用"备份码"防丢。</p>
+      <div class="panel"><b>每日新词数</b><span class="sub">（一个专题约 15 词，通常 1~2 天学完）</span>
         <div class="chips" id="on-w" style="margin-top:8px"></div>
-        <b style="display:block;margin-top:12px">每日句子</b>
-        <div class="chips" id="on-s" style="margin-top:8px"></div>
       </div>
       <button class="btn" id="on-go">开始今天的学习</button>`);
     renderChips("on-w", [5, 10, 15], state.profile.goalW, v => (state.profile.goalW = v, $("on-w").querySelectorAll(".chip").forEach((c, i) => c.classList.toggle("sel", [5, 10, 15][i] === v))));
-    renderChips("on-s", [2, 3, 4], state.profile.goalS, v => (state.profile.goalS = v, $("on-s").querySelectorAll(".chip").forEach((c, i) => c.classList.toggle("sel", [2, 3, 4][i] === v))));
     $("on-go").onclick = () => { save(); $("mask").classList.remove("on"); renderHome(); show("v-home"); toast("今日任务已生成，开始吧"); };
   }
 

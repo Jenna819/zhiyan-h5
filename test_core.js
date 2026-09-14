@@ -35,10 +35,10 @@ globalThis.window = globalThis;
 load("data/words_cb.js"); load("data/words_th.js"); load("data/words_lc.js");
 load("data/words_mt.js"); load("data/words_ac.js"); load("data/words_sc.js");
 load("data/words_tc.js"); load("data/words_sd.js"); load("data/words_mc.js");
-load("data/sentences.js"); load("core.js");
+load("data/sentences.js"); load("data/themes.js"); load("core.js");
 
 const E = Engine;
-const content = { words: W, sents: S };
+const content = { words: W, sents: S, themes: T, wordsByTheme: T_WORDS };
 let pass = 0, fail = 0;
 function assert(cond, msg) {
   if (cond) { pass++; } else { fail++; print("❌ " + msg); }
@@ -161,6 +161,71 @@ st4.queue.words = [];
 for (const w of content.words.slice(0, 20)) st4.userWords[w.id] = { lv: 3, ok: 0, w: 0, lastErr: "", nr: "2099-01-01", de: 0, ded: "", lastQ: "" };
 const task4 = E.buildTask(st4, content, "2026-09-14");
 assert(task4.newIds.length === 0 && task4.reviewIds.length === 0 && task4.sentItems.length === 3, "词库耗尽: 无新无复习，仍有句子");
+
+// ---- 主题课包层 ----
+print(`\n主题 ${content.themes.length} 个 / 映射词数 ${Object.values(content.wordsByTheme).reduce((a, v) => a + v.length, 0)}`);
+{
+  const seen = new Set(); let dup = 0;
+  const wmap = {}; content.words.forEach(w => wmap[w.id] = w);
+  content.themes.forEach(t => {
+    const pack = content.wordsByTheme[t.id];
+    assert(pack && pack.length > 0, "主题无词 " + t.id);
+    pack.forEach(wid => { if (seen.has(wid)) dup++; seen.add(wid); assert(!!wmap[wid], "主题引用不存在词 " + wid); });
+    const low = t.art.map(p => p[0]).join(" ").toLowerCase().replace(/[^a-z0-9.%-]+/g, " ");
+    pack.forEach(wid => {
+      const w = wmap[wid].w.toLowerCase();
+      const ok = w.includes(" ") ? low.includes(w) : low.split(" ").some(tk => tk.startsWith(w)) || low.includes(w);
+      assert(ok, "主题词未出现在文章 " + t.id + " " + wid);
+    });
+    t.art.forEach(p => assert(p[0] && p[1] && !/[一-鿿]/.test(p[0]), "文章句缺字段或中英混排 " + t.id));
+  });
+  assert(dup === 0, "词被多个主题重复归属 dup=" + dup);
+  assert(seen.size === content.words.length, "主题未覆盖全部词 " + seen.size + "/" + content.words.length);
+}
+// 多日推进模拟：goalW=10 时第 2 天为文章日；goalW=15 的专题可能一天吃完
+{
+  const st5 = freshState(); st5.profile.goalW = 10; st5.theme = { i: 0, consumed: 0 };
+  const tids = content.themes.map(t => t.id);
+  let artDays = 0, day = 0, expectIdx = 0;
+  for (; day < 12; day++) {
+    const d = E.addDays("2026-09-14", day);
+    const plan = E.themePlan(st5, content, d);
+    assert(plan.theme !== null, "第" + day + "天应有任务");
+    assert(plan.newIds.length <= 10, "新词不超目标");
+    const pack = content.wordsByTheme[tids[st5.theme.i]];
+    const allFromCurrentPack = plan.newIds.every(w => pack.includes(w));
+    assert(allFromCurrentPack, "每日新词应来自当前主题包 day" + day);
+    if (plan.articleDue) { artDays++; assert(plan.newIds.length >= pack.length - st5.theme.consumed, "文章日应吃完本包"); }
+    plan.newIds.forEach(w => { st5.userWords[w] = E.applyAnswer(st5.userWords, w, "w2c", true, d); });
+    E.themeCommit(st5, content, plan.newIds);
+    E.themeAdvance(st5, content);
+    if (st5.theme.i > expectIdx) expectIdx = st5.theme.i;
+  }
+  assert(artDays >= 1 && artDays <= 4, "12 天内文章日数量合理，实际 " + artDays);
+  assert(st5.theme.i >= 3, "12 天应推进至少 3 个专题，实际 i=" + st5.theme.i);
+}
+// goalW=15：小包一天吃完并朗读
+{
+  const st6 = freshState(); st6.profile.goalW = 15; st6.theme = { i: 0, consumed: 0 };
+  const plan = E.themePlan(st6, content, "2026-09-14");
+  assert(plan.newIds.length === 15, "15 目标吃 15 词");
+  const packLen = content.wordsByTheme[plan.theme.id].length;
+  assert(plan.articleDue === (15 >= packLen - st6.theme.consumed), "文章日判定正确");
+}
+// themeQueue 顺序 = 主题序
+{
+  const st7 = freshState();
+  const q = E.themeQueue(st7, content);
+  assert(q.length === content.words.length, "队列含全部词");
+  const first = content.wordsByTheme[content.themes[0].id];
+  assert(q.slice(0, first.length).sort().join() === first.slice().sort().join(), "队首=第一包");
+}
+// 备份码含 theme
+{
+  const st8 = freshState(); st8.theme = { i: 3, consumed: 7 };
+  const rt = E.decodeBackup(E.encodeBackup(st8));
+  assert(rt.theme && rt.theme.i === 3 && rt.theme.consumed === 7, "备份码含主题进度");
+}
 
 print(`\n===== ${pass} 通过 / ${fail} 失败 =====`);
 if (fail) throw new Error("tests failed");

@@ -196,8 +196,6 @@
       } else {
         sentN++;
         if (a.rating === "poor") sentPoor++;
-        const sd = sentsById(content)[a.sid];
-        sentRatings[sd.sc] = (sentRatings[sd.sc] || 0) + (a.rating === "poor" ? 1 : a.rating === "ok" ? 0.5 : 0);
       }
     }
     // 薄弱点：历史累积权重（今天新错的已含在 uw.w）
@@ -249,12 +247,55 @@
       .map(([id]) => id).slice(0, 5);
   }
 
+  // ---------- 主题课包 ----------
+  // state.theme = {i: 当前主题下标, consumed: 该包已消费词数}
+  function themeIds(content) { return content.themes.map(t => t.id); }
+  function themePlan(state, content, dateStr) {
+    const ids = themeIds(content);
+    if (!state.theme) state.theme = { i: 0, consumed: 0 };
+    // 防御对齐：若当前包其实已吃完，前进
+    while (state.theme.i < ids.length && state.theme.consumed >= content.wordsByTheme[ids[state.theme.i]].length) {
+      state.theme.i++; state.theme.consumed = 0;
+    }
+    if (state.theme.i >= ids.length) return { theme: null, newIds: [], articleDue: false };
+    const t = content.themes[state.theme.i];
+    const pack = content.wordsByTheme[t.id];
+    const remain = Math.max(0, pack.length - state.theme.consumed);
+    const takeN = Math.min(state.profile.goalW, remain);
+    const newIds = pack.slice(state.theme.consumed, state.theme.consumed + takeN)
+      .filter(w => !state.userWords[w]);
+    const articleDue = takeN >= remain;
+    return { theme: t, themeNo: state.theme.i + 1, total: ids.length, newIds, articleDue };
+  }
+  // 今日 session 的新词清单（plan 时记录，答题时消费）
+  function themeCommit(state, content, newIds) {
+    if (!state.theme || !newIds.length) return;
+    const ids = themeIds(content);
+    const pack = content.wordsByTheme[ids[state.theme.i]];
+    state.theme.consumed = Math.min(pack.length, state.theme.consumed + newIds.length);
+  }
+  function themeAdvance(state, content) {
+    const ids = themeIds(content);
+    if (!state.theme) return;
+    const pack = content.wordsByTheme[ids[Math.min(state.theme.i, ids.length - 1)]];
+    if (state.theme.consumed >= pack.length && state.theme.i < ids.length - 1) {
+      state.theme.i++; state.theme.consumed = 0;
+    }
+  }
+  function themeQueue(state, content) {
+    const uw = state.userWords, mapped = new Set(), out = [];
+    for (const t of content.themes)
+      for (const wid of content.wordsByTheme[t.id]) { mapped.add(wid); if (!uw[wid]) out.push(wid); }
+    for (const w of content.words) if (!mapped.has(w.id) && !uw[w.id]) out.push(w.id);
+    return out;
+  }
+
   // ---------- 备份码 ----------
   function encodeBackup(state) {
     const core = {
       v: 1, uid: state.uid, profile: state.profile, streak: state.streak,
       userWords: state.userWords, uSents: state.uSents, queue: state.queue,
-      forceTomorrow: state.forceTomorrow, days: state.days
+      forceTomorrow: state.forceTomorrow, days: state.days, theme: state.theme
     };
     const s = "ZY1." + btoa(unescape(encodeURIComponent(JSON.stringify(core))));
     return s;
@@ -283,6 +324,7 @@
     CATS, SCEN, LEVEL_INTERVAL, QCOEF, catOf,
     buildTask, makeOptions, makeOptionsMeaning, applyAnswer, effWeight, applySent,
     buildReport, makeSuggestions, forceTomorrowIds, encodeBackup, decodeBackup,
+    themePlan, themeCommit, themeAdvance, themeQueue, themeIds,
     wordMap, sentsById
   };
   if (typeof module !== "undefined") module.exports = Engine;

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body>
+<div id="__anchor"></div>
+<!-- 主题文章日流程测试：预置 state 使 T1 包今日吃完，触发朗读文章 -->
+<script>
+localStorage.setItem("zy_v1", JSON.stringify({
+  uid: "utest", profile: { goalW: 10, goalS: 3, createdAt: "2026-09-14" },
+  streak: { count: 1, lastDone: "2026-09-13" }, maxTs: Date.now(),
+  userWords: {}, uSents: {}, forceTomorrow: [], days: {}, session: null,
+  queue: { words: [], sents: [] }, theme: { i: 0, consumed: 15 }
+}));
+</script>
+<script>
+fetch("index.html").then(r=>r.text()).then(html=>{
+  const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1];
+  const pure = body.replace(/<script[\s\S]*?<\/script>/g, "");
+  document.body.insertAdjacentHTML("afterbegin", pure);
+  const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]);
+  let i=0;
+  function next(){
+    if(i>=scripts.length){ window.__booted=true; return; }
+    const s=document.createElement("script"); s.src=scripts[i++]; s.onload=next; s.onerror=()=>{document.title="LOAD_FAIL:"+s.src;};
+    document.body.appendChild(s);
+  }
+  next();
+});
+</script>
+<script>
+window.__errs=[];
+window.onerror=(m,s,l,c)=>{ window.__errs.push(m+" @"+l+":"+c); };
+let waited=0;
+const poll=setInterval(()=>{
+  if(!window.__booted){ if(++waited>200){document.title="BOOT_TIMEOUT";} return; }
+  clearInterval(poll);
+  try{ run(); }catch(e){ document.title="RUN_ERR:"+e.message; }
+},10);
+function on(id){ const el=document.getElementById(id); return el && el.classList.contains("on"); }
+function q(sel){ return document.querySelector(sel); }
+function run(){
+  const log=[];
+  const start=q("#btn-start");
+  if(!start){ document.title="NO_START"; return; }
+  start.click();
+  let steps=0, ratings=0, sawArticle=false, sawThemeLine=false, cnToggled=false;
+  if((q("#h-home-probe")||{}).textContent) {}
+  const homeTxt=(q("v-home")&&document.getElementById("v-home").textContent)||"";
+  while(steps++<200){
+    if(on("v-report")) break;
+    if(on("v-word")){
+      const fl=q("#fl-go");
+      if(fl){ fl.click(); log.push("FL"); continue; }
+      const next=q("#w-next");
+      if(next && q("#wp") && q("#wp").style.display!=="none"){ next.click(); log.push("NEXT"); continue; }
+      const opt=q("#opts .opt:not([disabled])");
+      if(opt){ opt.click(); log.push("ANS"); continue; }
+    }
+    if(on("v-sent")){
+      sawArticle=true;
+      if(!cnToggled && q("#btn-cn")){ q("#btn-cn").click(); cnToggled=true; log.push("CN"); continue; }
+      const rate=q("#s-body [data-r]");
+      if(rate){ rate.click(); ratings++; log.push("RATE"); continue; }
+    }
+    const vis=[...document.querySelectorAll(".view")].filter(v=>v.classList.contains("on")).map(v=>v.id);
+    document.title="STUCK@"+steps+" view="+vis+" err="+(window.__errs||[]).slice(-2).join("|")+" log="+log.slice(-6);
+    return;
+  }
+  const themeShown = (document.getElementById("v-home").textContent||homeTxt).includes("专题") || (document.getElementById("r-body").textContent||"").includes("专题");
+  const done=on("v-report");
+  const rep=q("#r-body") && q("#r-body").innerHTML.length>50;
+  const errs=(window.__errs||[]).length;
+  const st=JSON.parse(localStorage.getItem("zy_v1"));
+  const themeOk = st.theme && st.theme.i===1 && st.theme.consumed===0;
+  document.title = (done&&rep&&sawArticle&&ratings>=1&&themeOk&&!errs)
+    ? "UI_OK article-ratings="+ratings+" themeAdvanced="+themeOk+" cn="+cnToggled
+    : "UI_INCOMPLETE done="+done+" rep="+rep+" art="+sawArticle+" ratings="+ratings+" themeOk="+themeOk+" errs="+errs+" "+(window.__errs||[])[0];
+}
+</script>
+</body></html>
