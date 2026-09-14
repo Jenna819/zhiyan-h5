@@ -11,6 +11,8 @@ body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
 .card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(16,40,80,.06); }
 h1 { font-size: 22px; } h2 { font-size: 18px; margin-bottom: 10px; }
 .sub { color: var(--sub); font-size: 13px; }
+.stat { margin: 4px 0 2px; }
+.stat b { color: var(--brand); }
 .btn { display: block; width: 100%; border: none; background: var(--brand); color: #fff; font-size: 17px; padding: 14px; border-radius: 12px; margin-top: 12px; }
 .btn:active { transform: scale(.98); }
 .btn.ghost { background: #e8f0fe; color: var(--brand); }

@@ -78,6 +78,9 @@
   function renderHome() {
     const today = E.todayKey();
     $("h-date").textContent = today;
+    const learned = Object.keys(state.userWords).length;
+    const mastered = Object.values(state.userWords).filter(r => r.lv >= 2).length;
+    $("h-stat").innerHTML = `词库 <b>${content.words.length}</b> 词 · 已学 <b>${learned}</b> · 已掌握 <b>${mastered}</b>`;
     $("h-flame").innerHTML = state.streak.count > 0
       ? `已连续学习 <span class="flame">${state.streak.count}</span> 天 🔥` : "今天开始你的第一个 1 天";
     const sess = state.session;
